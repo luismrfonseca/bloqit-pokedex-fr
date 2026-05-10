@@ -101,4 +101,8 @@ export interface FilterSortState {
   typeFilter: string;
   sortField: SortField;
   sortOrder: SortOrder;
+  minHeight: number;
+  maxHeight: number;
+  minWeight: number;
+  maxWeight: number;
 }

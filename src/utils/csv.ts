@@ -35,6 +35,54 @@ export function buildCsvString(
   return [HEADERS.join(','), ...rows].join('\n');
 }
 
+export function parseCsvString(csv: string): Partial<PokedexEntry>[] {
+  const lines = csv.split('\n').filter(line => line.trim() !== '');
+  if (lines.length <= 1) return [];
+
+  const headers = lines[0].split(',').map(h => h.trim());
+  const idIdx = headers.indexOf('ID');
+  const nameIdx = headers.indexOf('Name');
+  const caughtAtIdx = headers.indexOf('Caught At');
+  const noteIdx = headers.indexOf('Note');
+
+  if (idIdx === -1) return [];
+
+  return lines.slice(1).map(line => {
+    const parts = parseCsvLine(line);
+    
+    return {
+      id: parseInt(parts[idIdx]),
+      name: parts[nameIdx] || '',
+      caughtAt: parts[caughtAtIdx] ? new Date(parts[caughtAtIdx]).toISOString() : new Date().toISOString(),
+      note: parts[noteIdx] || '',
+    };
+  }).filter(e => !isNaN(e.id as number));
+}
+
+function parseCsvLine(line: string): string[] {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i+1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
 export function exportToCsv(
   entries: PokedexEntry[],
   pokemonData: Record<number, Pokemon>

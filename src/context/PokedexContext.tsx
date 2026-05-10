@@ -18,6 +18,7 @@ interface PokedexContextType {
   releasePokemon: (id: number) => void;
   releaseMultiple: (ids: number[]) => void;
   updateNote: (id: number, note: string) => void;
+  importFromCsv: (data: Partial<PokedexEntry>[]) => void;
   isCaught: (id: number) => boolean;
   totalCaught: number;
   totalPokemon: number;
@@ -90,6 +91,19 @@ export function PokedexProvider({ children }: { children: ReactNode }) {
     saveToStorage(newEntries);
   }, [entries, saveToStorage]);
 
+  const importFromCsv = useCallback((data: Partial<PokedexEntry>[]) => {
+    const newEntries = { ...entries };
+    data.forEach((item) => {
+      if (item.id) {
+        newEntries[item.id] = {
+          ...(newEntries[item.id] || {}),
+          ...item,
+        } as PokedexEntry;
+      }
+    });
+    saveToStorage(newEntries);
+  }, [entries, saveToStorage]);
+
   const isCaught = useCallback((id: number) => id in entries, [entries]);
 
   const contextValue = useMemo(() => ({
@@ -98,12 +112,13 @@ export function PokedexProvider({ children }: { children: ReactNode }) {
     releasePokemon,
     releaseMultiple,
     updateNote,
+    importFromCsv,
     isCaught,
     totalCaught: mounted ? Object.keys(entries).length : 0,
     totalPokemon,
     setTotalPokemon,
     ready: mounted && isSuccess,
-  }), [mounted, entries, catchPokemon, releasePokemon, releaseMultiple, updateNote, isCaught, totalPokemon, isSuccess]);
+  }), [mounted, entries, catchPokemon, releasePokemon, releaseMultiple, updateNote, importFromCsv, isCaught, totalPokemon, isSuccess]);
 
   return (
     <PokedexContext.Provider value={contextValue}>

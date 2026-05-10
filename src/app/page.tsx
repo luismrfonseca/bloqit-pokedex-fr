@@ -1,18 +1,23 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { PokemonCard } from '@/components/pokemon/PokemonCard';
-import { PokemonDetailPanel } from '@/components/pokemon/PokemonDetailPanel';
-import { Modal } from '@/components/ui/Modal';
+import { PokemonCard } from '@/components/organisms/PokemonCard';
+import { PokemonDetailPanel } from '@/components/organisms/PokemonDetailPanel';
+import { Modal } from '@/components/organisms/Modal';
 import { usePokemonLoader } from '@/hooks/usePokemonLoader';
 import { usePokemonDetail } from '@/hooks/usePokemonDetail';
 import { usePokedex } from '@/context/PokedexContext';
 import { useFilters } from '@/context/FiltersContext';
+import { PageTemplate } from '@/components/templates/PageTemplate';
+import { PokemonGrid } from '@/components/organisms/PokemonGrid';
 
 export default function HomePage() {
   const { list, pokemonMap, phase, total, detailsLoaded } = usePokemonLoader();
   const { isCaught, setTotalPokemon } = usePokedex();
-  const { search, typeFilter, caughtOnly, clearFilters, hasActiveFilters } = useFilters();
+  const { 
+    search, typeFilter, caughtOnly, clearFilters, hasActiveFilters,
+    minHeight, maxHeight, minWeight, maxWeight
+  } = useFilters();
 
   useEffect(() => {
     if (total > 0) setTotalPokemon(total);
@@ -33,10 +38,16 @@ export default function HomePage() {
       );
     }
 
-    if (typeFilter) {
-      result = result.filter((p) =>
-        pokemonMap[p.id]?.types.some((t) => t.type.name === typeFilter)
-      );
+    if (typeFilter || minHeight > 0 || maxHeight < 200 || minWeight > 0 || maxWeight < 10000) {
+      result = result.filter((p) => {
+        const data = pokemonMap[p.id];
+        if (!data) return !typeFilter; // If no data, only keep if no type filter is active
+
+        if (typeFilter && !data.types.some((t) => t.type.name === typeFilter)) return false;
+        if (data.height < minHeight || data.height > maxHeight) return false;
+        if (data.weight < minWeight || data.weight > maxWeight) return false;
+        return true;
+      });
     }
 
     if (caughtOnly) {
@@ -44,7 +55,7 @@ export default function HomePage() {
     }
 
     return result;
-  }, [list, search, typeFilter, caughtOnly, pokemonMap, isCaught]);
+  }, [list, search, typeFilter, caughtOnly, pokemonMap, isCaught, minHeight, maxHeight, minWeight, maxWeight]);
 
   const handleOpenDetail = useCallback((id: number) => setSelectedId(id), []);
   const handleCloseDetail = useCallback(() => setSelectedId(null), []);
@@ -56,15 +67,11 @@ export default function HomePage() {
   })();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex items-baseline justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-1">All Pokémon</h1>
-          <p className="text-gray-500 text-sm">Browse all Pokémon and build your Pokédex.</p>
-        </div>
-        <span className="text-sm text-gray-400 whitespace-nowrap ml-4">{counterLabel}</span>
-      </div>
-
+    <PageTemplate
+      title="All Pokémon"
+      subtitle="Browse all Pokémon and build your Pokédex."
+      headerAction={<span className="text-sm text-gray-400">{counterLabel}</span>}
+    >
       {/* Grid */}
       {initialLoad ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -79,17 +86,11 @@ export default function HomePage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filtered.map((p) => (
-            <PokemonCard
-              key={p.id}
-              id={p.id}
-              name={p.name}
-              pokemon={pokemonMap[p.id] ?? null}
-              onOpenDetail={handleOpenDetail}
-            />
-          ))}
-        </div>
+        <PokemonGrid
+          list={filtered}
+          pokemonMap={pokemonMap}
+          onOpenDetail={handleOpenDetail}
+        />
       )}
 
       {/* Loading banners */}
@@ -116,7 +117,7 @@ export default function HomePage() {
           <PokemonDetailPanel pokemon={detailPokemon} />
         )}
       </Modal>
-    </div>
+    </PageTemplate>
   );
 }
 

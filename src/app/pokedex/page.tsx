@@ -2,27 +2,32 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { usePokedex } from '@/context/PokedexContext';
-import { ProgressOverview } from '@/components/pokedex/ProgressOverview';
-import { FilterSort } from '@/components/pokedex/FilterSort';
-import { PokedexGrid } from '@/components/pokedex/PokedexGrid';
-import { PokedexTable } from '@/components/pokedex/PokedexTable';
-import { ViewToggle } from '@/components/ui/ViewToggle';
-import { Modal } from '@/components/ui/Modal';
-import { PokemonDetailPanel } from '@/components/pokemon/PokemonDetailPanel';
+import { ProgressOverview } from '@/components/molecules/ProgressOverview';
+import { FilterSort } from '@/components/organisms/FilterSort';
+import { PokedexGrid } from '@/components/organisms/PokedexGrid';
+import { PokedexTable } from '@/components/organisms/PokedexTable';
+import { ViewToggle } from '@/components/molecules/ViewToggle';
+import { Modal } from '@/components/organisms/Modal';
+import { PokemonDetailPanel } from '@/components/organisms/PokemonDetailPanel';
 import { usePokemonDetail } from '@/hooks/usePokemonDetail';
-import { exportToCsv } from '@/utils/csv';
+import { exportToCsv, parseCsvString } from '@/utils/csv';
 import { FilterSortState, ViewMode, Pokemon } from '@/types/pokemon';
 import Link from 'next/link';
+import { PageTemplate } from '@/components/templates/PageTemplate';
 
 const DEFAULT_FILTERS: FilterSortState = {
   search: '',
   typeFilter: '',
   sortField: 'caughtAt',
   sortOrder: 'desc',
+  minHeight: 0,
+  maxHeight: 200,
+  minWeight: 0,
+  maxWeight: 10000,
 };
 
 export default function PokedexPage() {
-  const { entries, totalCaught, releaseMultiple } = usePokedex();
+  const { entries, totalCaught, releaseMultiple, importFromCsv } = usePokedex();
   const allEntries = useMemo(() => Object.values(entries), [entries]);
 
   const [filters, setFilters] = useState<FilterSortState>(DEFAULT_FILTERS);
@@ -42,10 +47,15 @@ export default function PokedexPage() {
       );
     }
 
-    if (filters.typeFilter) {
+    if (filters.typeFilter || filters.minHeight > 0 || filters.maxHeight < 200 || filters.minWeight > 0 || filters.maxWeight < 10000) {
       result = result.filter((e) => {
-        const p = entries[e.id];
-        return p?.types?.some((t) => t.type.name === filters.typeFilter);
+        const p = entries[e.id] as Pokemon | undefined;
+        if (!p) return !filters.typeFilter;
+
+        if (filters.typeFilter && !p.types?.some((t) => t.type.name === filters.typeFilter)) return false;
+        if (p.height < filters.minHeight || p.height > filters.maxHeight) return false;
+        if (p.weight < filters.minWeight || p.weight > filters.maxWeight) return false;
+        return true;
       });
     }
 
@@ -104,6 +114,26 @@ export default function PokedexPage() {
     exportToCsv(filteredEntries, entries);
   }, [filteredEntries, entries]);
 
+  const handleImportCsv = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const csv = event.target?.result as string;
+      const data = parseCsvString(csv);
+      if (data.length > 0) {
+        importFromCsv(data);
+        alert(`Successfully imported ${data.length} entries!`);
+      } else {
+        alert('Could not parse CSV or file is empty.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  }, [importFromCsv]);
+
   const handleOpenDetail = useCallback((id: number) => setSelectedId(id), []);
   const handleCloseDetail = useCallback(() => setSelectedId(null), []);
 
@@ -119,74 +149,94 @@ export default function PokedexPage() {
         <div className="mt-16 flex flex-col items-center justify-center gap-4 text-gray-400">
           <div className="text-7xl">📭</div>
           <h2 className="text-xl font-bold text-gray-700">Your Pokédex is empty</h2>
-          <p className="text-sm text-center max-w-sm">
-            Head over to{' '}
-            <Link href="/" className="text-red-500 font-medium hover:underline">
-              All Pokémon
-            </Link>{' '}
-            and start catching!
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm text-center max-w-sm">
+              Head over to{' '}
+              <Link href="/" className="text-red-500 font-medium hover:underline">
+                All Pokémon
+              </Link>{' '}
+              and start catching!
+            </p>
+            <div className="mt-4 border-t border-gray-100 pt-6 w-full flex flex-col items-center">
+              <p className="text-xs mb-3">Or restore from a backup:</p>
+              <label className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Import CSV
+                <input type="file" accept=".csv" onChange={handleImportCsv} className="hidden" />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-1">My Pokédex</h1>
-        <p className="text-gray-500 text-sm">Manage your caught Pokémon collection.</p>
-      </div>
+    <PageTemplate
+      title="My Pokédex"
+      subtitle="Manage your caught Pokémon collection."
+      topContent={
+        <>
+          <ProgressOverview />
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col gap-4">
+            <FilterSort state={filters} onChange={setFilters} />
 
-      <ProgressOverview />
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <ViewToggle view={view} onChange={setView} />
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col gap-4">
-        <FilterSort state={filters} onChange={setFilters} />
+              <button
+                onClick={toggleSelectMode}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                  selectMode
+                    ? 'bg-gray-800 text-white border-gray-800'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {selectMode ? 'Cancel Selection' : 'Select'}
+              </button>
 
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <ViewToggle view={view} onChange={setView} />
+              {selectMode && selected.size > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
+                >
+                  Release {selected.size} Pokémon
+                </button>
+              )}
 
-          <button
-            onClick={toggleSelectMode}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-              selectMode
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {selectMode ? 'Cancel Selection' : 'Select'}
-          </button>
+              <div className="ml-auto flex items-center gap-2">
+                <label className="px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Import CSV
+                  <input type="file" accept=".csv" onChange={handleImportCsv} className="hidden" />
+                </label>
 
-          {selectMode && selected.size > 0 && (
-            <button
-              onClick={handleDeleteSelected}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
-            >
-              Release {selected.size} Pokémon
-            </button>
-          )}
+                <button
+                  onClick={handleExportCsv}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export CSV
+                </button>
+              </div>
+            </div>
 
-          <div className="ml-auto">
-            <button
-              onClick={handleExportCsv}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export CSV
-            </button>
+            {filteredEntries.length > 0 && (
+              <p className="text-xs text-gray-400">
+                Showing {filteredEntries.length} of {totalCaught} Pokémon
+              </p>
+            )}
           </div>
-        </div>
-
-        {filteredEntries.length > 0 && (
-          <p className="text-xs text-gray-400">
-            Showing {filteredEntries.length} of {totalCaught} Pokémon
-          </p>
-        )}
-      </div>
-
+        </>
+      }
+    >
       {view === 'grid' ? (
         <PokedexGrid
           entries={filteredEntries}
@@ -218,6 +268,6 @@ export default function PokedexPage() {
           <PokemonDetailPanel pokemon={detailPokemon} />
         )}
       </Modal>
-    </div>
+    </PageTemplate>
   );
 }

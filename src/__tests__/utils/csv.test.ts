@@ -1,4 +1,4 @@
-import { exportToCsv, buildCsvString } from '@/utils/csv';
+import { exportToCsv, buildCsvString, parseCsvString } from '@/utils/csv';
 import { PokedexEntry, Pokemon } from '@/types/pokemon';
 
 const mockEntry: PokedexEntry = {
@@ -121,5 +121,44 @@ describe('exportToCsv', () => {
   it('revokes the object URL after triggering download', () => {
     exportToCsv([mockEntry], { 1: mockPokemon });
     expect(global.URL.revokeObjectURL as jest.Mock).toHaveBeenCalledWith('blob:test');
+  });
+});
+
+describe('parseCsvString', () => {
+  it('successfully parses a valid CSV string', () => {
+    const csv = 'ID,Name,Caught At,Note\n25,Pikachu,2024-01-15T10:30:00.000Z,"Great catch!"';
+    const result = parseCsvString(csv);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(25);
+    expect(result[0].name).toBe('Pikachu');
+    expect(result[0].note).toBe('Great catch!');
+  });
+
+  it('handles quoted notes with commas', () => {
+    const csv = 'ID,Name,Caught At,Note\n25,Pikachu,2024-01-15T10:30:00.000Z,"Note with , comma"';
+    const result = parseCsvString(csv);
+    expect(result[0].note).toBe('Note with , comma');
+  });
+
+  it('handles escaped double quotes in notes', () => {
+    const csv = 'ID,Name,Caught At,Note\n25,Pikachu,2024-01-15T10:30:00.000Z,"He said ""hello"""';
+    const result = parseCsvString(csv);
+    expect(result[0].note).toBe('He said "hello"');
+  });
+
+  it('returns empty array for invalid headers', () => {
+    const csv = 'Wrong,Header\n1,Value';
+    const result = parseCsvString(csv);
+    expect(result).toHaveLength(0);
+  });
+
+  it('returns empty array for empty string', () => {
+    expect(parseCsvString('')).toHaveLength(0);
+  });
+
+  it('skips lines with invalid IDs', () => {
+    const csv = 'ID,Name,Caught At,Note\ninvalid,Pikachu,2024,Note';
+    const result = parseCsvString(csv);
+    expect(result).toHaveLength(0);
   });
 });

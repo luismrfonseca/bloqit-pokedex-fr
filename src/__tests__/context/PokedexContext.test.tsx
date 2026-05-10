@@ -6,7 +6,7 @@ import { Pokemon } from '@/types/pokemon';
 
 // Helper component wiring up all context actions for assertion
 function Fixture() {
-  const { entries, catchPokemon, releasePokemon, releaseMultiple, updateNote, isCaught, totalCaught } =
+  const { entries, catchPokemon, releasePokemon, releaseMultiple, updateNote, isCaught, totalCaught, importFromCsv } =
     usePokedex();
 
     const bulbasaure: Pokemon = {
@@ -37,12 +37,14 @@ function Fixture() {
       <span data-testid="total">{totalCaught}</span>
       <span data-testid="caught-1">{isCaught(1) ? 'yes' : 'no'}</span>
       <span data-testid="caught-2">{isCaught(2) ? 'yes' : 'no'}</span>
+      <span data-testid="caught-25">{isCaught(25) ? 'yes' : 'no'}</span>
       <span data-testid="note-1">{entries[1]?.note ?? ''}</span>
       <button onClick={() => catchPokemon(bulbasaure)}>catch-1</button>
       <button onClick={() => catchPokemon(ivysaur)}>catch-2</button>
       <button onClick={() => releasePokemon(1)}>release-1</button>
       <button onClick={() => releaseMultiple([1, 2])}>release-all</button>
       <button onClick={() => updateNote(1, 'my note')}>note-1</button>
+      <button onClick={() => importFromCsv([{ id: 25, name: 'pikachu', note: 'imported', caughtAt: '2024-01-01' }])}>import</button>
     </div>
   );
 }
@@ -142,5 +144,14 @@ describe('PokedexContext', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     expect(() => render(<Fixture />)).toThrow('usePokedex should be used within PokedexProvider');
     spy.mockRestore();
+  });
+
+  it('importFromCsv merges new data into the pokedex', async () => {
+    renderFixture();
+    await userEvent.click(screen.getByRole('button', { name: 'import' }));
+    expect(screen.getByTestId('caught-25')).toBeDefined();
+    expect(screen.getByTestId('total')).toHaveTextContent('1');
+    const stored = JSON.parse(localStorage.getItem('pokedex_entries') ?? '{}');
+    expect(stored[25].note).toBe('imported');
   });
 });

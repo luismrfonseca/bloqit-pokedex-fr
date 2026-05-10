@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { ProgressOverview } from '@/components/pokedex/ProgressOverview';
+import { ProgressOverview } from '@/components/molecules/ProgressOverview';
 import { PokedexProvider } from '@/context/PokedexContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 

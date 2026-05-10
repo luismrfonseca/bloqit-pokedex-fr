@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { TypeBadge } from '@/components/ui/TypeBadge';
+import { TypeBadge } from '@/components/atoms/TypeBadge';
 import { TYPE_COLORS } from '@/types/pokemon';
 
 describe('TypeBadge', () => {

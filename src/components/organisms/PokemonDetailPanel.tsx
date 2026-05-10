@@ -3,8 +3,8 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import { Pokemon } from '@/types/pokemon';
-import { TypeBadge } from '@/components/ui/TypeBadge';
-import { StatBar } from '@/components/ui/StatBar';
+import { TypeBadge } from '@/components/atoms/TypeBadge';
+import { StatBar } from '@/components/molecules/StatBar';
 import { usePokedex } from '@/context/PokedexContext';
 import { sharePokemon, formatName } from '@/utils/share';
 import { officialArtworkUrl } from '@/services/pokemonService';
@@ -35,11 +35,10 @@ export function PokemonDetailPanel({ pokemon }: PokemonDetailPanelProps) {
     if (caught) releasePokemon(pokemon.id);
     else catchPokemon(pokemon);
   };
-
   const handleSaveNote = () => {
     updateNote(pokemon.id, note);
     setNoteSaved(true);
-    setTimeout(() => setNoteSaved(false), 10);
+    setTimeout(() => setNoteSaved(false), 2000);
   };
 
   const headerBg = getBgColor(pokemon.types[0]?.type.name);

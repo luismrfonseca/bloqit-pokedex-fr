@@ -3,8 +3,8 @@ import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { PokedexProvider } from '@/context/PokedexContext';
 import { FiltersProvider } from '@/context/FiltersContext';
-import { Navbar } from '@/components/layout/Navbar';
-import { ServiceWorkerRegistration } from '@/components/layout/ServiceWorkerRegistration';
+import { Navbar } from '@/components/organisms/Navbar';
+import { ServiceWorkerRegistration } from '@/components/atoms/ServiceWorkerRegistration';
 
 export const metadata: Metadata = {
   title: 'Pokédex Tracker',

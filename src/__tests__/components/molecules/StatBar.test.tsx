@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { StatBar } from '@/components/ui/StatBar';
+import { StatBar } from '@/components/molecules/StatBar';
 
 describe('StatBar', () => {
   it('renders the display name for known stat keys', () => {

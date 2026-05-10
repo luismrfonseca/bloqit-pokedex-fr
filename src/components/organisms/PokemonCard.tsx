@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Pokemon } from '@/types/pokemon';
-import { TypeBadge } from '@/components/ui/TypeBadge';
+import { TypeBadge } from '@/components/atoms/TypeBadge';
 import { usePokedex } from '@/context/PokedexContext';
 import { officialArtworkUrl } from '@/services/pokemonService';
 import { formatName } from '@/utils/share';

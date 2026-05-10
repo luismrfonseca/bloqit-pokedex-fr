@@ -10,6 +10,13 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/*.{d,test,spec}.{ts,tsx}',
+    '!src/app/layout.tsx',
+    '!src/providers/**',
+  ],
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/tests/'],
 };
 
 export default createJestConfig(config);
